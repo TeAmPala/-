@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Рисовалка</title>
+  <style>
+    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; display:flex; height:100vh; }
+    #controls { width:220px; padding:12px; box-sizing:border-box; background:#f4f4f6; border-right:1px solid #ddd; }
+    #canvasWrap { flex:1; display:flex; align-items:stretch; justify-content:stretch; position:relative; }
+    canvas { width:100%; height:100%; display:block; background:#fff; touch-action: none; }
+    label { display:block; margin:8px 0 4px; font-size:13px; color:#333; }
+    .btn { display:inline-block; margin-top:10px; padding:8px 10px; border:1px solid #bbb; background:#fff; cursor:pointer; border-radius:4px; }
+    .color-swatch { width:28px; height:28px; display:inline-block; vertical-align:middle; margin-right:6px; border:1px solid #ccc; cursor:pointer; }
+    .row { margin-bottom:8px; }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <h3 style="margin:4px 0 10px">Рисовалка</h3>
+
+    <label>Цвет</label>
+    <div class="row">
+      <input id="color" type="color" value="#000000" />
+      <div id="preset" style="display:inline-block; margin-left:8px;">
+        <span class="color-swatch" data-color="#000000" style="background:#000"></span>
+        <span class="color-swatch" data-color="#ff0000" style="background:#f00"></span>
+        <span class="color-swatch" data-color="#00aaff" style="background:#0af"></span>
+        <span class="color-swatch" data-color="#00aa00" style="background:#0a0"></span>
+      </div>
+    </div>
+
+    <label>Толщина</label>
+    <div class="row">
+      <input id="size" type="range" min="1" max="60" value="4" />
+      <span id="sizeVal" style="margin-left:8px">4</span> px
+    </div>
+
+    <label>Режим</label>
+    <div class="row">
+      <button id="penBtn" class="btn">Кисть</button>
+      <button id="eraserBtn" class="btn">Ластик</button>
+    </div>
+
+    <div class="row">
+      <button id="clearBtn" class="btn">Очистить</button>
+      <button id="saveBtn" class="btn">Сохранить PNG</button>
+    </div>
+
+    <div style="margin-top:18px; font-size:12px; color:#666">
+      Поддерживает мышь и сенсор.
+    </div>
+  </div>
+
+  <div id="canvasWrap">
+    <canvas id="c"></canvas>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d', { willReadFrequently: false });
+    function resize() {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const w = Math.max(300, Math.floor(rect.width));
+      const h = Math.max(150, Math.floor(rect.height));
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      ctx.scale(dpr, dpr);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      redrawBackground();
+    }
+
+    // keep a white background so saved PNG has white background
+    function redrawBackground() {
+      ctx.save();
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.restore();
+    }
+
+    window.addEventListener('resize', () => {
+      // save content, resize, restore
+      const data = canvas.toDataURL();
+      resize();
+      const img = new Image();
+      img.onload = () => { ctx.drawImage(img,0,0,canvas.width / (window.devicePixelRatio||1), canvas.height / (window.devicePixelRatio||1)); };
+      img.src = data;
+    });
+
+    resize();
+
+    // controls
+    const colorInput = document.getElementById('color');
+    const sizeInput = document.getElementById('size');
+    const sizeVal = document.getElementById('sizeVal');
+    const penBtn = document.getElementById('penBtn');
+    const eraserBtn = document.getElementById('eraserBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    document.querySelectorAll('.color-swatch').forEach(s => {
+      s.addEventListener('click', () => { colorInput.value = s.dataset.color; currentColor = s.dataset.color; mode = 'pen'; updateModeUI(); });
+    });
+
+    let drawing = false;
+    let last = { x: 0, y: 0 };
+    let currentColor = colorInput.value;
+    let lineWidth = Number(sizeInput.value);
+    let mode = 'pen'; // 'pen' or 'eraser'
+
+    function updateModeUI(){
+      penBtn.style.borderColor = mode === 'pen' ? '#333' : '#bbb';
+      eraserBtn.style.borderColor = mode === 'eraser' ? '#333' : '#bbb';
+    }
+    updateModeUI();
+
+    colorInput.addEventListener('input', (e) => { currentColor = e.target.value; mode = 'pen'; updateModeUI(); });
+    sizeInput.addEventListener('input', (e) => { lineWidth = Number(e.target.value); sizeVal.textContent = lineWidth; });
+
+    penBtn.addEventListener('click', () => { mode = 'pen'; updateModeUI(); });
+    eraserBtn.addEventListener('click', () => { mode = 'eraser'; updateModeUI(); });
+
+    clearBtn.addEventListener('click', () => {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      redrawBackground();
+    });
+
+    saveBtn.addEventListener('click', () => {
+      // make a copy with proper pixel ratio to save
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.width, h = canvas.height;
+      const tmp = document.createElement('canvas');
+      tmp.width = w; tmp.height = h;
+      const tctx = tmp.getContext('2d');
+      tctx.fillStyle = '#ffffff';
+      tctx.fillRect(0,0,w,h);
+      tctx.drawImage(canvas,0,0);
+      const link = document.createElement('a');
+      link.download = 'drawing.png';
+      link.href = tmp.toDataURL('image/png');
+      link.click();
+    });
+
+    // drawing helpers
+    function getPointerPos(e){
+      const rect = canvas.getBoundingClientRect();
+      if (e.touches && e.touches[0]) {
+        return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+      } else {
+        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      }
+    }
+
+    function pointerDown(e){
+      e.preventDefault();
+      drawing = true;
+      last = getPointerPos(e);
+      ctx.beginPath();
+      ctx.moveTo(last.x, last.y);
+    }
+    function pointerMove(e){
+      if (!drawing) return;
+      const p = getPointerPos(e);
+      ctx.strokeStyle = mode === 'eraser' ? '#ffffff' : currentColor;
+      ctx.lineWidth = lineWidth;
+      ctx.globalCompositeOperation = mode === 'eraser' ? 'destination-out' : 'source-over';
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      last = p;
+    }
+    function pointerUp(e){
+      if (!drawing) return;
+      drawing = false;
+      ctx.closePath();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    // mouse
+    canvas.addEventListener('mousedown', pointerDown);
+    window.addEventListener('mousemove', pointerMove);
+    window.addEventListener('mouseup', pointerUp);
+    // touch
+    canvas.addEventListener('touchstart', pointerDown, {passive:false});
+    canvas.addEventListener('touchmove', pointerMove, {passive:false});
+    canvas.addEventListener('touchend', pointerUp);
+
+    // optional: support stylus pressure (pointer events)
+    if (window.PointerEvent) {
+      canvas.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'pen' || e.pointerType === 'touch' || e.pointerType === 'mouse') {
+          pointerDown(e);
+        }
+      });
+      canvas.addEventListener('pointermove', (e) => {
+        if (e.pressure && e.pressure > 0 && drawing) {
+          // scale line width by pressure (optional)
+          ctx.lineWidth = Math.max(1, lineWidth * (0.5 + e.pressure));
+        }
+        pointerMove(e);
+      });
+      canvas.addEventListener('pointerup', pointerUp);
+    }
+  </script>
+</body>
+</html>
