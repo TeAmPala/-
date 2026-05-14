@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=2.0">
+  <title>🎨 Рисовалка — чистый JavaScript</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #2b2d42 0%, #1d1f2c 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+      padding: 20px;
+      margin: 0;
+    }
+
+    .drawing-app {
+      background: #edf2f4;
+      border-radius: 2.5rem;
+      box-shadow: 0 30px 50px rgba(0, 0, 0, 0.5), 0 10px 20px rgba(0, 0, 0, 0.4);
+      padding: 24px 28px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      width: fit-content;
+      max-width: 100%;
+    }
+
+    canvas {
+      display: block;
+      background: white;
+      border-radius: 28px;
+      box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.08), 0 12px 25px rgba(0, 0, 0, 0.25);
+      cursor: crosshair;
+      width: 100%;
+      height: auto;
+      touch-action: none;  /* предотвращает прокрутку на мобильных при рисовании */
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 12px 15px;
+      background: #ffffffd9;
+      backdrop-filter: blur(12px);
+      background: rgba(255, 255, 255, 0.85);
+      padding: 15px 20px;
+      border-radius: 60px;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .color-picker-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #2b2d42;
+      padding: 6px 12px;
+      border-radius: 40px;
+    }
+
+    .color-picker-wrapper label {
+      color: white;
+      font-weight: 600;
+      font-size: 0.9rem;
+      letter-spacing: 0.4px;
+    }
+
+    input[type="color"] {
+      width: 38px;
+      height: 38px;
+      border: 2px solid white;
+      border-radius: 50%;
+      cursor: pointer;
+      background: transparent;
+      padding: 2px;
+    }
+    input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+    input[type="color"]::-webkit-color-swatch {
+      border: none;
+      border-radius: 50%;
+    }
+
+    .brush-size-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #2b2d42;
+      padding: 5px 16px;
+      border-radius: 30px;
+      color: white;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    input[type="range"] {
+      width: 85px;
+      cursor: pointer;
+      accent-color: #ef233c;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn {
+      background: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 40px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      letter-spacing: 0.3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+      transition: all 0.2s ease;
+      background: #ffffff;
+      color: #2b2d42;
+      border: 1px solid #d0d4dc;
+    }
+
+    .btn:hover {
+      background: #ef233c;
+      color: white;
+      border-color: #ef233c;
+      box-shadow: 0 8px 14px rgba(239, 35, 60, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .btn.clear-btn:hover {
+      background: #f77f00;
+      border-color: #f77f00;
+    }
+
+    .btn.eraser-btn {
+      background: #f8f9fa;
+    }
+
+    .btn.eraser-btn.active {
+      background: #2b2d42;
+      color: white;
+      border-color: #2b2d42;
+      box-shadow: 0 0 0 3px rgba(43, 45, 66, 0.4);
+    }
+
+    .size-value {
+      min-width: 35px;
+      display: inline-block;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    @media (max-width: 650px) {
+      .drawing-app {
+        padding: 16px;
+        border-radius: 2rem;
+      }
+      .toolbar {
+        gap: 10px;
+        padding: 14px 15px;
+      }
+      .btn {
+        padding: 8px 14px;
+        font-size: 0.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="drawing-app">
+  <!-- Холст для рисования -->
+  <canvas id="drawCanvas" width="700" height="500" aria-label="Холст для рисования"></canvas>
+
+  <!-- Панель инструментов -->
+  <div class="toolbar">
+    <!-- Выбор цвета -->
+    <div class="color-picker-wrapper">
+      <label for="colorPicker">🎨</label>
+      <input type="color" id="colorPicker" value="#ef233c">
+    </div>
+
+    <!-- Размер кисти -->
+    <div class="brush-size-box">
+      <span>🖌️</span>
+      <input type="range" id="brushSize" min="1" max="50" value="8">
+      <span class="size-value" id="sizeDisplay">8</span>
+    </div>
+
+    <!-- Кнопки действий -->
+    <div class="btn-group">
+      <button class="btn" id="clearCanvasBtn" title="Очистить холст">🗑️ Очистить</button>
+      <button class="btn eraser-btn" id="eraserToggleBtn" title="Ластик / Кисть">🧽 Ластик</button>
+      <button class="btn" id="saveBtn" title="Скачать рисунок">💾 Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    // ----- Получаем элементы DOM -----
+    const canvas = document.getElementById('drawCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const colorPicker = document.getElementById('colorPicker');
+    const brushSizeInput = document.getElementById('brushSize');
+    const sizeDisplay = document.getElementById('sizeDisplay');
+    const clearBtn = document.getElementById('clearCanvasBtn');
+    const eraserToggleBtn = document.getElementById('eraserToggleBtn');
+    const saveBtn = document.getElementById('saveBtn');
+
+    // ----- Состояние рисования -----
+    let isDrawing = false;          // рисуем ли сейчас
+    let currentColor = colorPicker.value;  // #ef233c (начальный красный)
+    let currentBrushSize = parseInt(brushSizeInput.value, 10); // 8
+    let isEraserActive = false;    // активен ли ластик
+
+    // Координаты для плавных линий
+    let lastX = 0;
+    let lastY = 0;
+
+    // ----- Начальная заливка фона (белый) -----
+    function initializeCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Устанавливаем начальные стили рисования
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      // Сразу применяем цвет/ластик к стилю
+      applyDrawingStyle();
+    }
+
+    // Применяем стиль в зависимости от режима (кисть / ластик)
+    function applyDrawingStyle() {
+      if (isEraserActive) {
+        // Ластик: рисуем белым цветом (цвет фона)
+        ctx.strokeStyle = '#FFFFFF';
+      } else {
+        ctx.strokeStyle = currentColor;
+      }
+      ctx.lineWidth = currentBrushSize;
+    }
+
+    // ----- Функция рисования линии от предыдущей точки к текущей -----
+    function drawLine(fromX, fromY, toX, toY) {
+      ctx.beginPath();
+      ctx.moveTo(fromX, fromY);
+      ctx.lineTo(toX, toY);
+      ctx.stroke();
+    }
+
+    // ----- Обработчики событий мыши -----
+    function onMouseDown(e) {
+      isDrawing = true;
+      // Получаем координаты относительно canvas
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;   // масштаб по X
+      const scaleY = canvas.height / rect.height; // масштаб по Y
+
+      const clientX = e.clientX;
+      const clientY = e.clientY;
+
+      // Текущая позиция с учётом масштабирования
+      lastX = (clientX - rect.left) * scaleX;
+      lastY = (clientY - rect.top) * scaleY;
+
+      // Чтобы поставить точку при одиночном клике, рисуем маленькую окружность
+      ctx.beginPath();
+      ctx.arc(lastX, lastY, currentBrushSize / 2, 0, Math.PI * 2);
+      ctx.fillStyle = isEraserActive ? '#FFFFFF' : currentColor;
+      ctx.fill();
+    }
+
+    function onMouseMove(e) {
+      if (!isDrawing) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+
+      const clientX = e.clientX;
+      const clientY = e.clientY;
+
+      const currentX = (clientX - rect.left) * scaleX;
+      const currentY = (clientY - rect.top) * scaleY;
+
+      // Рисуем линию от lastX,lastY до currentX,currentY
+      drawLine(lastX, lastY, currentX, currentY);
+
+      // Обновляем последние координаты
+      lastX = currentX;
+      lastY = currentY;
+    }
+
+    function onMouseUp() {
+      isDrawing = false;
+    }
+
+    function onMouseLeave() {
+      // Если мышь покидает canvas, прекращаем рисование (но не сбрасываем lastX/lastY резко)
+      isDrawing = false;
+    }
+
+    // ----- Обработчики для сенсорных экранов (мобильные) -----
+    function getTouchPos(e) {
+      // Предотвращаем стандартное поведение (прокрутка, зум)
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+
+      // Берём первое касание
+      const touch = e.touches[0];
+      const clientX = touch.clientX;
+      const clientY = touch.clientY;
+
+      return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+      };
+    }
+
+    function onTouchStart(e) {
+      const pos = getTouchPos(e);
+      if (!pos) return;
+      isDrawing = true;
+      lastX = pos.x;
+      lastY = pos.y;
+
+      // Рисуем точку при касании
+      ctx.beginPath();
+      ctx.arc(lastX, lastY, currentBrushSize / 2, 0, 2 * Math.PI);
+      ctx.fillStyle = isEraserActive ? '#FFFFFF' : currentColor;
+      ctx.fill();
+    }
+
+    function onTouchMove(e) {
+      if (!isDrawing) return;
+      const pos = getTouchPos(e);
+      if (!pos) return;
+
+      const currentX = pos.x;
+      const currentY = pos.y;
+
+      drawLine(lastX, lastY, currentX, currentY);
+
+      lastX = currentX;
+      lastY = currentY;
+    }
+
+    function onTouchEnd(e) {
+      e.preventDefault();
+      isDrawing = false;
+    }
+
+    function onTouchCancel(e) {
+      e.preventDefault();
+      isDrawing = false;
+    }
+
+    // ----- Обновление интерфейса (размер кисти, ластик) -----
+    function updateSizeDisplay() {
+      sizeDisplay.textContent = currentBrushSize;
+    }
+
+    function setBrushSize(size) {
+      currentBrushSize = Math.min(50, Math.max(1, size));
+      brushSizeInput.value = currentBrushSize;
+      updateSizeDisplay();
+      applyDrawingStyle();
+    }
+
+    // Переключение ластика
+    function toggleEraser() {
+      isEraserActive = !isEraserActive;
+      if (isEraserActive) {
+        eraserToggleBtn.classList.add('active');
+        eraserToggleBtn.innerHTML = '🧽 Ластик (вкл)';
+      } else {
+        eraserToggleBtn.classList.remove('active');
+        eraserToggleBtn.innerHTML = '🧽 Ластик';
+      }
+      applyDrawingStyle();
+    }
+
+    // Очистка холста (заливка белым)
+    function clearCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Если был ластик, стиль остаётся корректным, ничего не ломается.
+      // Но на всякий случай переприменяем стиль (вдруг цвет изменился)
+      applyDrawingStyle();
+    }
+
+    // Сохранение рисунка
+    function saveDrawing() {
+      // Создаём временную ссылку для скачивания
+      const link = document.createElement('a');
+      link.download = `мой-рисунок-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    // ----- Подписка на события интерфейса -----
+    function bindEvents() {
+      // Мышь
+      canvas.addEventListener('mousedown', onMouseDown);
+      canvas.addEventListener('mousemove', onMouseMove);
+      canvas.addEventListener('mouseup', onMouseUp);
+      canvas.addEventListener('mouseleave', onMouseLeave);
+
+      // Сенсорные события
+      canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+      canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+      canvas.addEventListener('touchend', onTouchEnd);
+      canvas.addEventListener('touchcancel', onTouchCancel);
+
+      // Цвет
+      colorPicker.addEventListener('input', (e) => {
+        currentColor = e.target.value;
+        if (!isEraserActive) {
+          applyDrawingStyle();
+        }
+      });
+
+      // Размер кисти
+      brushSizeInput.addEventListener('input', (e) => {
+        setBrushSize(parseInt(e.target.value, 10));
+      });
+
+      // Кнопка очистки
+      clearBtn.addEventListener('click', clearCanvas);
+
+      // Кнопка ластика
+      eraserToggleBtn.addEventListener('click', toggleEraser);
+
+      // Сохранение
+      saveBtn.addEventListener('click', saveDrawing);
+    }
+
+    // Дополнительно: предотвращаем нежелательное перетаскивание изображений и т.п.
+    canvas.addEventListener('dragstart', (e) => e.preventDefault());
+
+    // ----- Старт приложения -----
+    initializeCanvas();
+    bindEvents();
+    // Устанавливаем начальное отображение размера
+    updateSizeDisplay();
+    // Убедимся, что стиль соответствует начальному состоянию
+    applyDrawingStyle();
+  })();
+</script>
+</body>
+</html>
