@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Космический шутер</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial;
+        }
+        .game-box {
+            text-align: center;
+        }
+        canvas {
+            border: 2px solid #0f0;
+            background: #111;
+            display: block;
+            margin: 0 auto;
+        }
+        .info {
+            color: #0f0;
+            margin: 10px;
+            font-size: 18px;
+        }
+        button {
+            padding: 10px 30px;
+            margin: 5px;
+            font-size: 18px;
+            cursor: pointer;
+            background: #0f0;
+            border: none;
+            color: #000;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #0a0;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-box">
+        <div class="info">
+            Счёт: <span id="score">0</span> | 
+            Волна: <span id="wave">1</span> | 
+            HP: <span id="hp">100</span> | 
+            Патроны: <span id="ammo">30/30</span> |
+            КД: <span id="cooldown">0</span>
+        </div>
+        <canvas id="game" width="800" height="600"></canvas>
+        <br>
+        <button onclick="startGame()">Новая игра</button>
+        <div class="info" style="font-size:14px;">
+            WASD - движение | Мышь - стрельба | R - перезарядка
+        </div>
+    </div>
+
+    <script>
+        // Получаем canvas
+        var canvas = document.getElementById('game');
+        var ctx = canvas.getContext('2d');
+        
+        // Игрок
+        var player = {
+            x: 400,
+            y: 300,
+            w: 30,
+            h: 30,
+            speed: 4,
+            hp: 100,
+            ammo: 30,
+            maxAmmo: 30,
+            reloading: false,
+            reloadTimer: 0,
+            shootCooldown: 0,  // Таймер кулдауна
+            shootDelay: 15     // Задержка между выстрелами (в кадрах, 60 кадров = 1 секунда)
+        };
+        
+        // Массивы для объектов
+        var bullets = [];
+        var enemies = [];
+        var score = 0;
+        var wave = 1;
+        var gameRunning = true;
+        
+        // Положение мыши
+        var mouseX = 400;
+        var mouseY = 300;
+        var mouseDown = false;
+        
+        // Клавиши
+        var keys = {};
+        
+        // Зажата ли кнопка мыши
+        canvas.onmousedown = function(e) {
+            mouseDown = true;
+            e.preventDefault();
+        };
+        
+        canvas.onmouseup = function(e) {
+            mouseDown = false;
+            e.preventDefault();
+        };
+        
+        canvas.onmousemove = function(e) {
+            var rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        };
+        
+        canvas.oncontextmenu = function(e) {
+            e.preventDefault();
+        };
+        
+        // Клавиатура
+        document.onkeydown = function(e) {
+            keys[e.key.toLowerCase()] = true;
+            
+            if (e.key.toLowerCase() === 'r') {
+                reload();
+            }
+            
+            // Отключаем прокрутку страницы стрелками
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || 
+                e.key === 'ArrowLeft' || e.key === 'ArrowRight' || 
+                e.key === ' ') {
+                e.preventDefault();
+            }
+        };
+        
+        document.onkeyup = function(e) {
+            keys[e.key.toLowerCase()] = false;
+        };
+        
+        // Перезарядка
+        function reload() {
+            if (player.reloading === false && player.ammo < player.maxAmmo) {
+                player.reloading = true;
+                player.reloadTimer = 90; // 1.5 секунды перезарядка
+            }
+        }
+        
+        // Выстрел с кулдауном
+        function shoot() {
+            // Проверяем кулдаун
+            if (player.shootCooldown > 0) {
+                return; // Ещё не прошло время с последнего выстрела
+            }
+            
+            // Проверяем перезарядку
+            if (player.reloading) {
+                return;
+            }
+            
+            // Проверяем патроны
+            if (player.ammo <= 0) {
+                reload();
+                return;
+            }
+            
+            var angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+            
+            bullets.push({
+                x: player.x,
+                y: player.y,
+                vx: Math.cos(angle) * 8,
+                vy: Math.sin(angle) * 8,
+                damage: 25
+            });
+            
+            player.ammo = player.ammo - 1;
+            player.shootCooldown = player.shootDelay; // Устанавливаем кулдаун
+        }
+        
+        // Создание врага
+        function createEnemy() {
+            var side = Math.floor(Math.random() * 4);
+            var x, y;
+            
+            if (side === 0) { x = Math.random() * 800; y = -20; }
+            if (side === 1) { x = 820; y = Math.random() * 600; }
+            if (side === 2) { x = Math.random() * 800; y = 620; }
+            if (side === 3) { x = -20; y = Math.random() * 600; }
+            
+            enemies.push({
+                x: x,
+                y: y,
+                w: 25,
+                h: 25,
+                hp: 50,
+                speed: 1.5
+            });
+        }
+        
+        // Спавн волны
+        function spawnWave() {
+            var count = 3 + wave * 2;
+            for (var i = 0; i < count; i++) {
+                createEnemy();
+            }
+        }
+        
+        // Обновление игры
+        function update() {
+            if (gameRunning === false) return;
+            
+            // Уменьшаем кулдаун
+            if (player.shootCooldown > 0) {
+                player.shootCooldown = player.shootCooldown - 1;
+            }
+            
+            // Движение игрока
+            if (keys['w'] || keys['ц']) {
+                player.y = player.y - player.speed;
+            }
+            if (keys['s'] || keys['ы']) {
+                player.y = player.y + player.speed;
+            }
+            if (keys['a'] || keys['ф']) {
+                player.x = player.x - player.speed;
+            }
+            if (keys['d'] || keys['в']) {
+                player.x = player.x + player.speed;
+            }
+            
+            // Границы для игрока
+            if (player.x < 15) player.x = 15;
+            if (player.x > 785) player.x = 785;
+            if (player.y < 15) player.y = 15;
+            if (player.y > 585) player.y = 585;
+            
+            // Перезарядка
+            if (player.reloading) {
+                player.reloadTimer = player.reloadTimer - 1;
+                if (player.reloadTimer <= 0) {
+                    player.ammo = player.maxAmmo;
+                    player.reloading = false;
+                }
+            }
+            
+            // Стрельба с учётом кулдауна
+            if (mouseDown && gameRunning && player.shootCooldown <= 0) {
+                shoot();
+            }
+            
+            // Движение пуль
+            for (var i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].x = bullets[i].x + bullets[i].vx;
+                bullets[i].y = bullets[i].y + bullets[i].vy;
+                
+                // Удаление пуль за экраном
+                if (bullets[i].x < 0 || bullets[i].x > 800 || 
+                    bullets[i].y < 0 || bullets[i].y > 600) {
+                    bullets.splice(i, 1);
+                }
+            }
+            
+            // Движение врагов к игроку
+            for (var i = 0; i < enemies.length; i++) {
+                var dx = player.x - enemies[i].x;
+                var dy = player.y - enemies[i].y;
+                var dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist > 0) {
+                    enemies[i].x = enemies[i].x + (dx / dist) * enemies[i].speed;
+                    enemies[i].y = enemies[i].y + (dy / dist) * enemies[i].speed;
+                }
+                
+                // Урон игроку при касании
+                if (dist < 25) {
+                    player.hp = player.hp - 1;
+                    if (player.hp <= 0) {
+                        gameOver();
+                    }
+                }
+            }
+            
+            // Проверка попаданий пуль во врагов
+            for (var i = bullets.length - 1; i >= 0; i--) {
+                for (var j = enemies.length - 1; j >= 0; j--) {
+                    var dx = bullets[i].x - enemies[j].x;
+                    var dy = bullets[i].y - enemies[j].y;
+                    var dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < 20) {
+                        enemies[j].hp = enemies[j].hp - bullets[i].damage;
+                        bullets.splice(i, 1);
+                        
+                        if (enemies[j].hp <= 0) {
+                            enemies.splice(j, 1);
+                            score = score + 100;
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            // Новая волна если врагов нет
+            if (enemies.length === 0) {
+                wave = wave + 1;
+                spawnWave();
+            }
+            
+            // Обновление текста
+            document.getElementById('score').innerHTML = score;
+            document.getElementById('wave').innerHTML = wave;
+            document.getElementById('hp').innerHTML = player.hp;
+            document.getElementById('cooldown').innerHTML = player.shootCooldown;
+            
+            var ammoText = player.ammo + '/' + player.maxAmmo;
+            if (player.reloading) {
+                ammoText = ammoText + ' ПЕРЕЗАРЯДКА';
+            }
+            document.getElementById('ammo').innerHTML = ammoText;
+        }
+        
+        // Отрисовка
+        function draw() {
+            // Очистка
+            ctx.fillStyle = '#111';
+            ctx.fillRect(0, 0, 800, 600);
+            
+            // Враги (красные квадраты)
+            ctx.fillStyle = '#f00';
+            for (var i = 0; i < enemies.length; i++) {
+                ctx.fillRect(enemies[i].x - 12, enemies[i].y - 12, 25, 25);
+            }
+            
+            // Пули (жёлтые кружки)
+            ctx.fillStyle = '#ff0';
+            for (var i = 0; i < bullets.length; i++) {
+                ctx.beginPath();
+                ctx.arc(bullets[i].x, bullets[i].y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Игрок (зелёный треугольник)
+            var angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+            
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            ctx.rotate(angle);
+            
+            // Если кулдаун активен - рисуем более тёмный корабль
+            if (player.shootCooldown > 0) {
+                ctx.fillStyle = '#0a0'; // Тёмно-зелёный когда нельзя стрелять
+            } else {
+                ctx.fillStyle = '#0f0'; // Ярко-зелёный когда можно стрелять
+            }
+            
+            ctx.beginPath();
+            ctx.moveTo(20, 0);
+            ctx.lineTo(-15, -12);
+            ctx.lineTo(-15, 12);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.restore();
+            
+            // Прицел
+            ctx.strokeStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(mouseX, mouseY, 10, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Индикатор кулдауна над игроком
+            if (player.shootCooldown > 0) {
+                ctx.fillStyle = '#fff';
+                ctx.font = '12px Arial';
+                ctx.fillText('КД: ' + player.shootCooldown, player.x - 20, player.y - 25);
+            }
+        }
+        
+        // Конец игры
+        function gameOver() {
+            gameRunning = false;
+            alert('Игра окончена! Счёт: ' + score + ' | Волна: ' + wave);
+        }
+        
+        // Новая игра
+        function startGame() {
+            player.x = 400;
+            player.y = 300;
+            player.hp = 100;
+            player.ammo = 30;
+            player.reloading = false;
+            player.reloadTimer = 0;
+            player.shootCooldown = 0;
+            
+            bullets = [];
+            enemies = [];
+            score = 0;
+            wave = 1;
+            gameRunning = true;
+            mouseDown = false;
+            
+            spawnWave();
+            
+            document.getElementById('score').innerHTML = '0';
+            document.getElementById('wave').innerHTML = '1';
+            document.getElementById('hp').innerHTML = '100';
+            document.getElementById('ammo').innerHTML = '30/30';
+            document.getElementById('cooldown').innerHTML = '0';
+        }
+        
+        // Игровой цикл
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Запуск
+        spawnWave();
+        gameLoop();
+    </script>
+</body>
+</html>
