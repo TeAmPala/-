@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Угадай число | Игра на JS</title>
+  <style>
+    * {
+      user-select: none;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0;
+      padding: 20px;
+    }
+    .game-container {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 40px;
+      padding: 30px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+      text-align: center;
+      max-width: 500px;
+      width: 100%;
+      transition: 0.3s;
+    }
+    h1 {
+      color: #1e3c72;
+      margin-bottom: 10px;
+      font-size: 2.2rem;
+    }
+    .subtitle {
+      color: #555;
+      margin-bottom: 20px;
+      font-style: italic;
+    }
+    .range {
+      background: #e9ecef;
+      padding: 10px;
+      border-radius: 60px;
+      font-weight: bold;
+      color: #2a5298;
+      font-size: 1.2rem;
+      margin: 15px 0;
+    }
+    .guess-area {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+    .input-wrapper {
+      flex: 1;
+      min-width: 140px;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: #555;
+      margin-bottom: 5px;
+      text-align: left;
+      font-weight: 600;
+    }
+    input {
+      font-size: 1.5rem;
+      padding: 12px 20px;
+      width: 100%;
+      text-align: center;
+      border: 2px solid #ccc;
+      border-radius: 50px;
+      outline: none;
+      font-weight: bold;
+      transition: 0.2s;
+      box-sizing: border-box;
+    }
+    input:focus {
+      border-color: #2a5298;
+      box-shadow: 0 0 0 3px rgba(42,82,152,0.2);
+    }
+    input:disabled {
+      background-color: #e9ecef;
+      cursor: not-allowed;
+    }
+    button {
+      background: #2a5298;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: 0.2s;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    button:hover:not(:disabled) {
+      background: #1e3c72;
+      transform: scale(1.02);
+    }
+    button:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .message {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 30px;
+      margin: 20px 0;
+      font-size: 1.2rem;
+      font-weight: 500;
+      min-height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    .attempts {
+      font-size: 1.1rem;
+      background: #ffedd5;
+      display: inline-block;
+      padding: 8px 20px;
+      border-radius: 40px;
+      margin-top: 10px;
+    }
+    .new-game-btn {
+      background: #28a745;
+      margin-top: 10px;
+    }
+    .new-game-btn:hover {
+      background: #218838;
+    }
+    .history {
+      background: #f1f3f5;
+      border-radius: 30px;
+      padding: 15px;
+      margin-top: 20px;
+      text-align: left;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    .history-title {
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #1e3c72;
+    }
+    .history-list {
+      font-family: monospace;
+      font-size: 0.9rem;
+      word-break: break-word;
+    }
+    .win {
+      color: #2b8a3e;
+      font-weight: bold;
+    }
+    footer {
+      font-size: 0.7rem;
+      margin-top: 20px;
+      color: #888;
+    }
+    @media (max-width: 480px) {
+      .game-container { padding: 20px; }
+      input { font-size: 1.2rem; }
+      button { padding: 10px 18px; font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="game-container">
+  <h1>🎯 Угадай число</h1>
+  <div class="subtitle">Компьютер загадал секретное число</div>
+  <div class="range">🔢 от 1 до 100</div>
+
+  <div class="guess-area">
+    <div class="input-wrapper">
+      <label for="guessInput">Введите число:</label>
+      <input type="number" id="guessInput" placeholder="?" min="1" max="100" autofocus>
+    </div>
+    <button id="checkBtn">🔥 Проверить</button>
+  </div>
+
+  <div class="message" id="messageBox">
+    ✨ Введи число и нажми "Проверить" ✨
+  </div>
+
+  <div class="attempts" id="attemptsDisplay">
+    Попыток: 0
+  </div>
+
+  <button id="newGameBtn" class="new-game-btn">🔄 Новая игра</button>
+
+  <div class="history">
+    <div class="history-title">📜 История попыток:</div>
+    <div class="history-list" id="historyList">
+      Пока пусто...
+    </div>
+  </div>
+  <footer>⭐ Подсказки: холодно / тепло / горячо! ⭐</footer>
+</div>
+
+<script>
+  // ------------------- ИГРОВОЙ МОДУЛЬ -------------------
+  let secretNumber;
+  let attempts;
+  let guessesHistory;
+
+  // DOM элементы
+  const guessInput = document.getElementById('guessInput');
+  const checkBtn = document.getElementById('checkBtn');
+  const newGameBtn = document.getElementById('newGameBtn');
+  const messageBox = document.getElementById('messageBox');
+  const attemptsDisplay = document.getElementById('attemptsDisplay');
+  const historyList = document.getElementById('historyList');
+
+  // Функция генерации случайного числа от 1 до 100
+  function generateSecret() {
+    return Math.floor(Math.random() * 100) + 1;
+  }
+
+  // Функция получения подсказки на основе разницы
+  function getTemperatureHint(difference) {
+    const absDiff = Math.abs(difference);
+    if (absDiff === 0) return "🎉 УГАДАЛ! 🎉";
+    if (absDiff <= 5) return "🔥 ГОРЯЧО! Очень близко!";
+    if (absDiff <= 15) return "👍 ТЕПЛО! Уже рядом";
+    if (absDiff <= 30) return "❄️ ХОЛОДНО... Но можно ближе";
+    return "🥶 ЛЕДЯНОЙ ХОЛОД! Далеко...";
+  }
+
+  // Обновить отображение истории
+  function updateHistoryUI() {
+    if (guessesHistory.length === 0) {
+      historyList.innerHTML = "Пока пусто...";
+      return;
+    }
+    let html = '';
+    for (let i = 0; i < guessesHistory.length; i++) {
+      const item = guessesHistory[i];
+      let icon = '';
+      if (item.hint.includes('УГАДАЛ')) icon = '🏆';
+      else if (item.hint.includes('ГОРЯЧО')) icon = '🔥';
+      else if (item.hint.includes('ТЕПЛО')) icon = '👍';
+      else if (item.hint.includes('ХОЛОДНО')) icon = '❄️';
+      else icon = '🧊';
+
+      html += `<div>${icon} ${item.number} → ${item.hint}</div>`;
+    }
+    historyList.innerHTML = html;
+    historyList.parentElement.scrollTop = historyList.parentElement.scrollHeight;
+  }
+
+  // Обновить счётчик попыток
+  function updateAttemptsUI() {
+    attemptsDisplay.textContent = `Попыток: ${attempts}`;
+  }
+
+  // Основная логика проверки числа
+  function checkGuess() {
+    const rawValue = guessInput.value.trim();
+    if (rawValue === "") {
+      messageBox.innerHTML = "⚠️ Введи число от 1 до 100!";
+      return;
+    }
+    const guess = Number(rawValue);
+
+    if (isNaN(guess) || !Number.isInteger(guess) || guess < 1 || guess > 100) {
+      messageBox.innerHTML = "❌ Ошибка! Введи ЦЕЛОЕ число от 1 до 100.";
+      guessInput.value = "";
+      guessInput.focus();
+      return;
+    }
+
+    const diff = guess - secretNumber;
+    let hintMessage = "";
+    const isWin = guess === secretNumber;
+
+    if (isWin) {
+      hintMessage = `🎉 УГАДАЛ! Число ${secretNumber} 🎉 Поздравляю!`;
+      messageBox.innerHTML = `<span class="win">${hintMessage}</span>`;
+    } else {
+      const tempHint = getTemperatureHint(diff);
+      const direction = diff > 0 ? "📈 Загаданное число МЕНЬШЕ" : "📉 Загаданное число БОЛЬШЕ";
+      hintMessage = `${tempHint} ${direction}`;
+      messageBox.innerHTML = hintMessage;
+    }
+
+    attempts++;
+    updateAttemptsUI();
+
+    guessesHistory.push({
+      number: guess,
+      hint: isWin ? `ПОБЕДА! число ${secretNumber} за ${attempts} попыток!` : hintMessage
+    });
+    updateHistoryUI();
+
+    if (isWin) {
+      checkBtn.disabled = true;
+      guessInput.disabled = true;
+      messageBox.innerHTML += `<div style="margin-top:10px;">🎮 Нажми «Новая игра», чтобы продолжить</div>`;
+    } else {
+      guessInput.value = "";
+      guessInput.focus();
+    }
+  }
+
+  // Новая игра
+  function newGame() {
+    secretNumber = generateSecret();
+    attempts = 0;
+    guessesHistory = [];
+    updateAttemptsUI();
+    updateHistoryUI();
+
+    checkBtn.disabled = false;
+    guessInput.disabled = false;
+    guessInput.value = "";
+    guessInput.focus();
+
+    messageBox.innerHTML = "🌟 Новая игра! Загадано число от 1 до 100. Попробуй угадать! 🌟";
+  }
+
+  // Обработка нажатия Enter
+  function onEnterHandler(e) {
+    if (e.key === 'Enter' && !checkBtn.disabled) {
+      e.preventDefault();
+      checkGuess();
+    }
+  }
+
+  // Инициализация
+  function init() {
+    newGame();
+    checkBtn.addEventListener('click', checkGuess);
+    newGameBtn.addEventListener('click', newGame);
+    guessInput.addEventListener('keypress', onEnterHandler);
+  }
+
+  init();
+</script>
+</body>
+</html>

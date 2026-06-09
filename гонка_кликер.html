@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Race Clicker</title>
+  <link rel="stylesheet" href="гоночка.css">
+</head>
+<body>
+
+<div class="container">
+
+  <h1>🏁 Race Clicker</h1>
+
+  <div class="menu">
+
+    <label>Режим:</label>
+
+    <select id="mode">
+      <option value="bot">Против бота</option>
+      <option value="pvp">2 игрока</option>
+    </select>
+
+    <label>Сложность:</label>
+
+    <select id="difficulty">
+      <option value="easy">Легко</option>
+      <option value="normal" selected>Нормально</option>
+      <option value="hard">Сложно</option>
+      <option value="insane">Безумие</option>
+    </select>
+
+  </div>
+
+  <div class="keys">
+
+    <div>
+      Игрок:
+      <input id="playerKey" value="Space">
+    </div>
+
+    <div>
+      Игрок 2:
+      <input id="player2Key" value="KeyL">
+    </div>
+
+  </div>
+
+  <div class="scoreboard">
+
+    <div>
+      Игрок:
+      <span id="playerScore">0</span>
+    </div>
+
+    <div>
+      <span id="enemyName">Бот</span>:
+      <span id="enemyScore">0</span>
+    </div>
+
+  </div>
+
+  <button id="startBtn">
+    Старт
+  </button>
+
+  <div class="race">
+
+    <div class="lane">
+
+      <div class="name">
+        Игрок
+      </div>
+
+      <div class="track">
+        <div id="playerCar" class="car">
+          🏎️
+        </div>
+      </div>
+
+      <div class="progress">
+        <div id="playerBar" class="fill"></div>
+      </div>
+
+    </div>
+
+    <div class="lane">
+
+      <div class="name" id="enemyLaneName">
+        Бот
+      </div>
+
+      <div class="track">
+        <div id="botCar" class="car">
+          🏎️
+        </div>
+      </div>
+
+      <div class="progress">
+        <div id="botBar" class="fill bot-fill"></div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="controls">
+
+    Нажимай свою кнопку максимально быстро
+
+  </div>
+
+  <div id="status"></div>
+
+</div>
+
+<script src="гоночки.js"></script>
+
+</body>
+</html>
