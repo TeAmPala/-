@@ -1,0 +1,129 @@
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+body{
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:linear-gradient(135deg,#0f172a,#1e293b);
+  font-family:Arial,sans-serif;
+  color:white;
+}
+
+.container{
+  width:900px;
+  max-width:95%;
+}
+
+h1{
+  text-align:center;
+  margin-bottom:20px;
+}
+
+.menu,
+.keys{
+  display:flex;
+  justify-content:center;
+  gap:15px;
+  margin-bottom:15px;
+  flex-wrap:wrap;
+}
+
+select,
+input,
+button{
+  padding:10px;
+  border:none;
+  border-radius:10px;
+  font-size:16px;
+}
+
+button{
+  display:block;
+  margin:20px auto;
+  cursor:pointer;
+  background:#22c55e;
+  color:white;
+  font-weight:bold;
+}
+
+button:hover{
+  opacity:.9;
+}
+
+.scoreboard{
+  display:flex;
+  justify-content:center;
+  gap:60px;
+  font-size:24px;
+  margin:20px 0;
+  font-weight:bold;
+}
+
+.lane{
+  margin-bottom:30px;
+}
+
+.name{
+  margin-bottom:8px;
+}
+
+.track{
+  height:70px;
+  background:#334155;
+  border-radius:12px;
+  position:relative;
+  overflow:hidden;
+}
+
+.track::after{
+  content:"🏁";
+  position:absolute;
+  right:10px;
+  top:16px;
+  font-size:30px;
+}
+
+.car{
+  position:absolute;
+  left:0;
+  top:15px;
+  font-size:40px;
+  transition:left .05s linear;
+}
+
+.progress{
+  height:16px;
+  margin-top:10px;
+  background:#1e293b;
+  border-radius:999px;
+  overflow:hidden;
+}
+
+.fill{
+  width:0;
+  height:100%;
+  background:#22c55e;
+}
+
+.bot-fill{
+  background:#ef4444;
+}
+
+.controls{
+  text-align:center;
+  font-size:22px;
+  margin-top:20px;
+}
+
+#status{
+  text-align:center;
+  margin-top:25px;
+  font-size:32px;
+  font-weight:bold;
+  min-height:40px;
+}
